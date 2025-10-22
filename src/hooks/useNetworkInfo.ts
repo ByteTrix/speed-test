@@ -61,34 +61,36 @@ export const useNetworkInfo = (selectedServer?: string) => {
         // Try multiple IP information services
         let geoData: GeoData;
         
-        // First try ipinfo.io (fallback)
+        // First try ipapi.co (more accurate)
         try {
-          const infoResponse = await fetch(`https://ipinfo.io/${ipAddress}/json`);
-          if (infoResponse.ok) {
-            geoData = await infoResponse.json();
-            
-            // Format for consistency with our expected fields
-            geoData.regionName = geoData.region;
-            geoData.lat = geoData.loc ? geoData.loc.split(',')[0] : "0";
-            geoData.lon = geoData.loc ? geoData.loc.split(',')[1] : "0";
+          const geoResponse = await fetch(`https://ipapi.co/${ipAddress}/json`);
+          if (geoResponse.ok) {
+            geoData = await geoResponse.json();
+            // Format fields for consistency
+            geoData.regionName = geoData.region_name || geoData.region;
+            geoData.lat = geoData.latitude || "0";
+            geoData.lon = geoData.longitude || "0";
+            geoData.loc = `${geoData.lat},${geoData.lon}`;
+            console.log('Location from ipapi.co:', geoData);
           } else {
-            throw new Error('ipinfo.io service failed');
+            throw new Error('ipapi.co service failed');
           }
         } catch (error) {
-          console.warn('First IP info service failed, trying alternative:', error);
+          console.warn('ipapi.co failed, trying ipinfo.io:', error);
           
-          // Try ip-api.com (with HTTPS)
+          // Fallback to ipinfo.io
           try {
-            const geoResponse = await fetch(`https://ipapi.co/${ipAddress}/json`);
-            if (geoResponse.ok) {
-              geoData = await geoResponse.json();
-              // Format fields for consistency
-              geoData.regionName = geoData.region_name || geoData.region;
-              geoData.lat = geoData.latitude || "0";
-              geoData.lon = geoData.longitude || "0";
-              geoData.loc = `${geoData.lat},${geoData.lon}`;
+            const infoResponse = await fetch(`https://ipinfo.io/${ipAddress}/json`);
+            if (infoResponse.ok) {
+              geoData = await infoResponse.json();
+              
+              // Format for consistency with our expected fields
+              geoData.regionName = geoData.region;
+              geoData.lat = geoData.loc ? geoData.loc.split(',')[0] : "0";
+              geoData.lon = geoData.loc ? geoData.loc.split(',')[1] : "0";
+              console.log('Location from ipinfo.io:', geoData);
             } else {
-              throw new Error('ipapi.co service failed');
+              throw new Error('ipinfo.io service failed');
             }
           } catch (e) {
             // If both fail, create minimal fallback data

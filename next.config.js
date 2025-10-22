@@ -2,10 +2,19 @@
 const nextConfig = {
   reactStrictMode: true,
   // Optimize font loading
-  optimizeFonts: true,
-  // Ensure experimental.optimizeCss is false as it can cause issues with preloaded fonts
   experimental: {
     optimizeCss: false,
+  },
+  // Add webpack config to handle workers properly
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Don't try to bundle worker files
+      config.module.rules.push({
+        test: /\.worker\.js$/,
+        use: { loader: 'worker-loader' },
+      });
+    }
+    return config;
   },
 }
 

@@ -1,4 +1,5 @@
-export { default as NetworkInfoDisplay } from './NetworkInfoDisplay';
-export { default as SummaryMessage } from './SummaryMessage';
+export { NetworkInfoDisplay } from './NetworkInfoDisplay';
+export { SummaryMessage } from './SummaryMessage';
 export { ErrorDisplay } from './ErrorDisplay';
-export { default as ResultsDisplay } from './ResultsDisplay'; // Changed to default export
+export { ResultsDisplay } from './ResultsDisplay';
+export { default as CustomTooltip } from './CustomTooltip';
