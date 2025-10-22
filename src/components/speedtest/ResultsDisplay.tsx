@@ -44,6 +44,7 @@ interface ResultsDisplayProps {
   timeLabels?: number[];
   isDownloadOnly?: boolean; // New prop to indicate download-only mode
   testMode?: 'download-only' | 'full'; // Current test mode setting
+  autoStart?: boolean; // New prop to indicate if auto-start is enabled
 }
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
@@ -63,6 +64,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   timeLabels = [],
   isDownloadOnly = false,
   testMode = 'download-only',
+  autoStart = false,
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   
@@ -198,7 +200,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       <div className="text-center space-y-6">
         {/* Primary Download Speed */}
         <div className="space-y-2">
-          {isTesting ? (
+          {isTesting || testStage === 'ping' ? (
             <>
               <div className="text-6xl sm:text-8xl font-bold text-gray-900 dark:text-white tracking-tight">
                 {testStage === 'ping' && (
@@ -226,7 +228,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 {displayUnit}
               </div>
             </>
-          ) : (
+          ) : !autoStart ? (
             <>
               <div className="text-4xl sm:text-5xl font-bold text-gray-600 tracking-tight">
                 Ready to test
@@ -244,6 +246,10 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 {networkInfo?.testServer ? 'Start Test' : 'Loading server info...'}
               </button>
             </>
+          ) : (
+            <div className="text-4xl sm:text-5xl animate-pulse text-gray-600">
+              Initializing test...
+            </div>
           )}
         </div>
 

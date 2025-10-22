@@ -202,6 +202,7 @@ const Page = () => {
             onFullTest={handleFullTest}
             isDownloadOnly={speedTest.result?.isDownloadOnly}
             testMode={settings.testMode}
+            autoStart={AUTO_START}
           />
         ) : null}
         </div>
