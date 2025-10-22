@@ -36,11 +36,14 @@ interface ResultsDisplayProps {
   currentSpeed?: number;
   displayUnit: string;
   onRestartTest?: () => void;
+  onFullTest?: () => void; // New prop for triggering full test
   networkInfo: NetworkInfo | null;
   loading: boolean;
   downloadData?: number[];
   uploadData?: number[];
   timeLabels?: number[];
+  isDownloadOnly?: boolean; // New prop to indicate download-only mode
+  testMode?: 'download-only' | 'full'; // Current test mode setting
 }
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
@@ -50,6 +53,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   currentSpeed = 0,
   displayUnit,
   onRestartTest,
+  onFullTest,
   networkInfo,
   loading,
   isTesting = false,
@@ -57,6 +61,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   downloadData = [],
   uploadData = [],
   timeLabels = [],
+  isDownloadOnly = false,
+  testMode = 'download-only',
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   
@@ -194,7 +200,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <div className="space-y-2">
           {isTesting ? (
             <>
-              <div className="text-6xl sm:text-8xl font-bold text-white tracking-tight">
+              <div className="text-6xl sm:text-8xl font-bold text-gray-900 dark:text-white tracking-tight">
                 {testStage === 'ping' && (
                   <span className="text-4xl sm:text-5xl animate-pulse">Measuring latency...</span>
                 )}
@@ -213,7 +219,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </>
           ) : hasRealData ? (
             <>
-              <div className="text-8xl sm:text-9xl font-bold text-white tracking-tight">
+              <div className="text-8xl sm:text-9xl font-bold text-gray-900 dark:text-white tracking-tight">
                 {downloadSpeed}
               </div>
               <div className="text-2xl sm:text-3xl text-gray-500 font-light">
@@ -231,9 +237,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               <button
                 onClick={onRestartTest}
                 disabled={!networkInfo?.testServer}
-                className="mt-6 px-12 py-4 bg-white hover:bg-gray-200 text-black text-lg font-medium rounded-md
-                         transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 
-                         focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-6 px-12 py-4 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black text-lg font-medium rounded-md
+                         transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 
+                         focus:ring-offset-white dark:focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {networkInfo?.testServer ? 'Start Test' : 'Loading server info...'}
               </button>
@@ -241,26 +247,48 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           )}
         </div>
 
-        {/* Secondary Info - Upload & Ping in compact format */}
+        {/* Secondary Info - Upload & Ping in compact format OR Full Test button for download-only */}
         {!isTesting && hasRealData && (
-          <div className="flex items-center justify-center gap-8 text-gray-400">
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm text-gray-500">Upload</span>
-              <span className="text-xl font-semibold text-white">{uploadSpeed}</span>
-              <span className="text-sm">{displayUnit}</span>
-            </div>
-            <div className="w-px h-6 bg-gray-800"></div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm text-gray-500">Latency</span>
-              <span className="text-xl font-semibold text-white">{ping}</span>
-              <span className="text-sm">ms</span>
-            </div>
-          </div>
+          <>
+            {isDownloadOnly ? (
+              // Download-only mode: Show latency and Full Test button
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex items-baseline gap-2 text-gray-400">
+                  <span className="text-sm text-gray-500">Latency</span>
+                  <span className="text-xl font-semibold text-gray-900 dark:text-white">{ping}</span>
+                  <span className="text-sm">ms</span>
+                </div>
+                <button
+                  onClick={onFullTest}
+                  className="px-6 py-2 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black text-sm font-medium rounded-md
+                           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 
+                           focus:ring-offset-white dark:focus:ring-offset-black"
+                >
+                  Full Test
+                </button>
+              </div>
+            ) : (
+              // Full test mode: Show upload and latency
+              <div className="flex items-center justify-center gap-8 text-gray-400">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-gray-500">Upload</span>
+                  <span className="text-xl font-semibold text-gray-900 dark:text-white">{uploadSpeed}</span>
+                  <span className="text-sm">{displayUnit}</span>
+                </div>
+                <div className="w-px h-6 bg-gray-800"></div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-gray-500">Latency</span>
+                  <span className="text-xl font-semibold text-gray-900 dark:text-white">{ping}</span>
+                  <span className="text-sm">ms</span>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Expand Details Button - Only show when test is complete */}
-      {!isTesting && hasRealData && (
+      {/* Expand Details Button - Only show when test is complete and NOT in download-only result mode */}
+      {!isTesting && hasRealData && !isDownloadOnly && (
         <div className="flex justify-center mt-8">
           <button
             onClick={() => setShowDetails(!showDetails)}
@@ -310,15 +338,15 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Download</span>
-                  <span className="text-white font-semibold">{downloadSpeed} {displayUnit}</span>
+                  <span className="text-gray-900 dark:text-white font-semibold">{downloadSpeed} {displayUnit}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Upload</span>
-                  <span className="text-white font-semibold">{uploadSpeed} {displayUnit}</span>
+                  <span className="text-gray-900 dark:text-white font-semibold">{uploadSpeed} {displayUnit}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Latency</span>
-                  <span className="text-white font-semibold">{ping} ms</span>
+                  <span className="text-gray-900 dark:text-white font-semibold">{ping} ms</span>
                 </div>
               </div>
             </div>
@@ -362,9 +390,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           <div className="flex justify-center pt-2">
             <button
               onClick={onRestartTest}
-              className="px-6 py-2.5 bg-white hover:bg-gray-200 text-black text-sm font-medium rounded-md
-                       transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 
-                       focus:ring-offset-black"
+              className="px-6 py-2.5 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black text-sm font-medium rounded-md
+                       transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 
+                       focus:ring-offset-white dark:focus:ring-offset-black"
             >
               Test Again
             </button>

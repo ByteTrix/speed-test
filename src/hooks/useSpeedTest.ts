@@ -17,6 +17,7 @@ export interface SpeedTestResult {
   downloadData: number[];
   uploadData: number[];
   timeLabels: number[];
+  isDownloadOnly?: boolean; // Flag to indicate if this was a download-only test
 }
 
 export interface SpeedTestState {
@@ -71,6 +72,7 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
   const timeLabelsRef = useRef<number[]>([]);
   const startTimeRef = useRef<number>(0);
   const pingRef = useRef<number>(0);
+  const skipUploadRef = useRef<boolean>(false); // Track if we should skip upload
 
   const measurePing = async (url: string): Promise<number> => {
     const startTime = performance.now();
@@ -92,6 +94,8 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
     timeLabelsRef.current = [];
     startTimeRef.current = Date.now();
     pingRef.current = DUMMY_PING;
+
+    const isDownloadOnly = skipUploadRef.current;
 
     // Simulate ping stage
     setState(prev => ({
@@ -122,11 +126,35 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
       downloadDataRef.current.push(speed);
       timeLabelsRef.current.push(elapsedTime);
       
+      const maxProgress = isDownloadOnly ? 95 : 45;
       setState(prev => ({
         ...prev,
-        progress: Math.min(45, 10 + (i / 80) * 35),
+        progress: Math.min(maxProgress, 10 + (i / 80) * (maxProgress - 10)),
         currentSpeed: speed,
       }));
+    }
+
+    // Skip upload if download-only mode
+    if (isDownloadOnly) {
+      console.log('✅ Dummy download-only test completed');
+      setState({
+        isTesting: false,
+        testStage: 'complete',
+        result: {
+          downloadSpeed: DUMMY_DOWNLOAD_SPEED,
+          uploadSpeed: 0,
+          ping: DUMMY_PING,
+          downloadData: downloadDataRef.current,
+          uploadData: [],
+          timeLabels: timeLabelsRef.current,
+          isDownloadOnly: true,
+        },
+        error: null,
+        progress: 100,
+        currentSpeed: 0,
+      });
+      skipUploadRef.current = false; // Reset flag
+      return;
     }
 
     // Simulate upload test
@@ -169,11 +197,13 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
         downloadData: downloadDataRef.current,
         uploadData: uploadDataRef.current,
         timeLabels: timeLabelsRef.current,
+        isDownloadOnly: false,
       },
       error: null,
       progress: 100,
       currentSpeed: 0,
     });
+    skipUploadRef.current = false; // Reset flag
   }, []);
 
   const startTest = useCallback(async () => {
@@ -286,6 +316,30 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
               console.log('Latency from TCPInfo.MinRTT:', pingRef.current, 'ms');
             }
 
+            // If download-only mode, complete the test here
+            if (skipUploadRef.current) {
+              console.log('✅ Download-only test completed');
+              setState({
+                isTesting: false,
+                testStage: 'complete',
+                result: {
+                  downloadSpeed: Math.round(maxDownloadSpeed * 10) / 10,
+                  uploadSpeed: 0,
+                  ping: pingRef.current,
+                  downloadData: downloadDataRef.current,
+                  uploadData: [],
+                  timeLabels: timeLabelsRef.current,
+                  isDownloadOnly: true,
+                },
+                error: null,
+                progress: 100,
+                currentSpeed: 0,
+              });
+              skipUploadRef.current = false; // Reset flag
+              // Close the connection to prevent upload test
+              return;
+            }
+
             setState(prev => ({
               ...prev,
               testStage: 'upload',
@@ -347,6 +401,7 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
           downloadData: downloadDataRef.current,
           uploadData: uploadDataRef.current,
           timeLabels: timeLabelsRef.current,
+          isDownloadOnly: false,
         },
         error: null,
         progress: 100,
@@ -376,11 +431,18 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
       progress: 0,
       currentSpeed: 0,
     });
+    skipUploadRef.current = false; // Reset flag on cancel
+  }, []);
+
+  // Method to set download-only mode for next test
+  const setDownloadOnlyMode = useCallback((downloadOnly: boolean) => {
+    skipUploadRef.current = downloadOnly;
   }, []);
 
   return {
     ...state,
     startTest,
     cancelTest,
+    setDownloadOnlyMode,
   };
 };

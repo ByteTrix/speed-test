@@ -28,13 +28,59 @@ const Page = () => {
     if (settings.theme === 'auto') {
       const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
       root.classList.toggle('dark', darkMode);
+      
+      // Listen for system theme changes
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => {
+        root.classList.toggle('dark', e.matches);
+      };
+      
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     } else {
-      root.classList.toggle('dark', settings.theme === 'dark');
+      // Manual theme selection
+      if (settings.theme === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
     }
   }, [settings.theme]);
 
+  // Set download-only mode based on settings before each test
+  useEffect(() => {
+    if (settings.testMode === 'download-only') {
+      speedTest.setDownloadOnlyMode(true);
+    } else {
+      speedTest.setDownloadOnlyMode(false);
+    }
+  }, [settings.testMode, speedTest.setDownloadOnlyMode]);
+
   // Handler to clear error and allow retry
   const handleRetry = () => {
+    // Apply current test mode
+    if (settings.testMode === 'download-only') {
+      speedTest.setDownloadOnlyMode(true);
+    } else {
+      speedTest.setDownloadOnlyMode(false);
+    }
+    speedTest.startTest();
+  };
+
+  // Handler for Full Test button (temporary full test)
+  const handleFullTest = () => {
+    speedTest.setDownloadOnlyMode(false);
+    speedTest.startTest();
+  };
+
+  // Handler for regular start test
+  const handleStartTest = () => {
+    // Apply current test mode
+    if (settings.testMode === 'download-only') {
+      speedTest.setDownloadOnlyMode(true);
+    } else {
+      speedTest.setDownloadOnlyMode(false);
+    }
     speedTest.startTest();
   };
 
@@ -58,6 +104,7 @@ const Page = () => {
       testStage: speedTest.testStage,
       autoStart: AUTO_START,
       testMode: TEST_MODE,
+      settingsTestMode: settings.testMode,
     });
 
     // Auto-start test if enabled in environment variables
@@ -66,6 +113,10 @@ const Page = () => {
       if (TEST_MODE === 'dummy') {
         console.log('Auto-starting DUMMY test...');
         const timer = setTimeout(() => {
+          // Apply test mode setting
+          if (settings.testMode === 'download-only') {
+            speedTest.setDownloadOnlyMode(true);
+          }
           speedTest.startTest();
         }, 500);
         return () => clearTimeout(timer);
@@ -74,16 +125,20 @@ const Page = () => {
       else if (networkInfo?.testServer) {
         console.log('Auto-starting REAL test with server:', networkInfo.testServer);
         const timer = setTimeout(() => {
+          // Apply test mode setting
+          if (settings.testMode === 'download-only') {
+            speedTest.setDownloadOnlyMode(true);
+          }
           speedTest.startTest();
         }, 1000);
         return () => clearTimeout(timer);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [networkInfo?.testServer, speedTest.isTesting, speedTest.result]);
+  }, [networkInfo?.testServer, speedTest.isTesting, speedTest.result, settings.testMode]);
 
   return (
-    <div className="min-h-dvh w-full bg-black text-white font-sans flex flex-col">
+    <div className="min-h-dvh w-full bg-white dark:bg-black text-black dark:text-white font-sans flex flex-col transition-colors duration-300">
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8 pb-0">
         <div className="w-full max-w-4xl flex flex-col items-center">
@@ -136,7 +191,10 @@ const Page = () => {
             downloadData={speedTest.result?.downloadData || []}
             uploadData={speedTest.result?.uploadData || []}
             timeLabels={speedTest.result?.timeLabels || []}
-            onRestartTest={speedTest.startTest}
+            onRestartTest={handleStartTest}
+            onFullTest={handleFullTest}
+            isDownloadOnly={speedTest.result?.isDownloadOnly}
+            testMode={settings.testMode}
           />
         ) : null}
         </div>
@@ -156,7 +214,7 @@ const Page = () => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-zinc-800/50"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/50"
             title="Settings"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,7 +226,7 @@ const Page = () => {
             href="https://github.com/ByteTrix/speed-test"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-zinc-800/50"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/50"
             title="GitHub"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -179,7 +237,7 @@ const Page = () => {
             href="https://ko-fi.com/itskavin"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-zinc-800/50"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/50"
             title="Support"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -188,7 +246,7 @@ const Page = () => {
           </a>
           <a
             href="mailto:contact@thekavin.com"
-            className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-zinc-800/50"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/50"
             title="Contact"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -198,7 +256,7 @@ const Page = () => {
         </div>
 
         {/* Right side - Credits */}
-        <div className="text-xs text-gray-600">
+        <div className="text-xs text-gray-600 dark:text-gray-600">
           Powered by ByteTrix
         </div>
       </div>

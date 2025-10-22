@@ -364,7 +364,7 @@ export const useNetworkInfo = (selectedServer?: string) => {
     return () => {
       // Cleanup function - consider adding an abort controller if needed
     };
-  }, [selectedServer, serverFetchAttempts]);
+  }, [selectedServer]); // Removed serverFetchAttempts to prevent infinite loop on retries
 
   return { networkInfo, loading, error };
 };
