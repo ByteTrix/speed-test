@@ -8,7 +8,7 @@ interface NetworkInfoDisplayProps {
   compact?: boolean;
 }
 
-const NetworkInfoDisplay: React.FC<NetworkInfoDisplayProps> = ({ 
+export const NetworkInfoDisplay: React.FC<NetworkInfoDisplayProps> = ({ 
   networkInfo, 
   loading,
   isMobile = false,
@@ -242,6 +242,3 @@ const NetworkInfoDisplay: React.FC<NetworkInfoDisplayProps> = ({
     </div>
   );
 };
-
-export { NetworkInfoDisplay };
-export default NetworkInfoDisplay;

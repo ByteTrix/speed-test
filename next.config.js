@@ -5,6 +5,8 @@ const nextConfig = {
   experimental: {
     optimizeCss: false,
   },
+  // Add turbopack config (empty for now, silences the warning)
+  turbopack: {},
   // Add webpack config to handle workers properly
   webpack: (config, { isServer }) => {
     if (!isServer) {

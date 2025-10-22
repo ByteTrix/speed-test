@@ -15,7 +15,7 @@ import {
   CoreScaleOptions
 } from 'chart.js';
 import { NetworkInfo } from '../../hooks/useNetworkInfo';
-import NetworkInfoDisplay from './NetworkInfoDisplay';
+import { NetworkInfoDisplay } from './NetworkInfoDisplay';
 
 ChartJS.register(
   CategoryScale,
