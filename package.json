@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@m-lab/ndt7": "^0.0.6",
+    "@vercel/analytics": "^1.5.0",
     "chart.js": "^4.5.1",
     "next": "^16.0.0",
     "react": "^19.2.0",
