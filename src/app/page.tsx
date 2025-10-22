@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   ErrorDisplay, 
   ResultsDisplay,
@@ -93,6 +93,9 @@ const Page = () => {
     : 0;
   const currentSpeedConverted = convertSpeed(speedTest.currentSpeed, 'Mbps', settings.speedUnit);
 
+  // Track if auto-start has already been triggered to prevent infinite loops
+  const autoStartTriggeredRef = useRef(false);
+
   // Auto-start test when network info is ready (controlled by environment variable)
   useEffect(() => {
     console.log('Network info state:', {
@@ -101,14 +104,18 @@ const Page = () => {
       serverUrls: networkInfo?.testServer?.urls,
       isTesting: speedTest.isTesting,
       hasResult: !!speedTest.result,
+      hasError: !!speedTest.error,
       testStage: speedTest.testStage,
       autoStart: AUTO_START,
+      autoStartTriggered: autoStartTriggeredRef.current,
       testMode: TEST_MODE,
       settingsTestMode: settings.testMode,
     });
 
-    // Auto-start test if enabled in environment variables
-    if (AUTO_START && !speedTest.isTesting && !speedTest.result) {
+    // Only auto-start once and only if there's no error
+    if (AUTO_START && !autoStartTriggeredRef.current && !speedTest.isTesting && !speedTest.result && !speedTest.error) {
+      autoStartTriggeredRef.current = true;
+
       // For dummy mode, start immediately
       if (TEST_MODE === 'dummy') {
         console.log('Auto-starting DUMMY test...');
@@ -135,7 +142,7 @@ const Page = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [networkInfo?.testServer, speedTest.isTesting, speedTest.result, settings.testMode]);
+  }, [networkInfo?.testServer, speedTest.isTesting, speedTest.result, speedTest.error, settings.testMode]);
 
   return (
     <div className="min-h-dvh w-full bg-white dark:bg-black text-black dark:text-white font-sans flex flex-col transition-colors duration-300">
