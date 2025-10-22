@@ -56,17 +56,6 @@ const Page = () => {
     }
   }, [settings.testMode, speedTest.setDownloadOnlyMode]);
 
-  // Handler to clear error and allow retry
-  const handleRetry = () => {
-    // Apply current test mode
-    if (settings.testMode === 'download-only') {
-      speedTest.setDownloadOnlyMode(true);
-    } else {
-      speedTest.setDownloadOnlyMode(false);
-    }
-    speedTest.startTest();
-  };
-
   // Handler for Full Test button (temporary full test)
   const handleFullTest = () => {
     speedTest.setDownloadOnlyMode(false);
@@ -114,11 +103,10 @@ const Page = () => {
 
     // Only auto-start once and only if there's no error
     if (AUTO_START && !autoStartTriggeredRef.current && !speedTest.isTesting && !speedTest.result && !speedTest.error) {
-      autoStartTriggeredRef.current = true;
-
       // For dummy mode, start immediately
       if (TEST_MODE === 'dummy') {
         console.log('Auto-starting DUMMY test...');
+        autoStartTriggeredRef.current = true;
         const timer = setTimeout(() => {
           // Apply test mode setting
           if (settings.testMode === 'download-only') {
@@ -128,9 +116,10 @@ const Page = () => {
         }, 500);
         return () => clearTimeout(timer);
       }
-      // For real mode, wait for network info
+      // For real mode, wait for network info - only mark as triggered AFTER server is available
       else if (networkInfo?.testServer) {
         console.log('Auto-starting REAL test with server:', networkInfo.testServer);
+        autoStartTriggeredRef.current = true;
         const timer = setTimeout(() => {
           // Apply test mode setting
           if (settings.testMode === 'download-only') {
@@ -163,11 +152,7 @@ const Page = () => {
         {/* Error Display */}
         {(error || speedTest.error) && (
           <div className="mb-6 w-full">
-            <ErrorDisplay 
-              error={error || speedTest.error} 
-              onRetry={handleRetry}
-              canRetry={!speedTest.isTesting}
-            />
+            <ErrorDisplay error={error || speedTest.error} />
           </div>
         )}
 

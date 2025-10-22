@@ -2,11 +2,9 @@ import React from 'react';
 
 type ErrorDisplayProps = {
   error: Error | string | null;
-  onRetry?: () => void;
-  canRetry?: boolean;
 };
 
-export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, canRetry = true }) => {
+export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error }) => {
   if (!error) return null;
   
   const errorMessage = typeof error === 'string' ? error : error.message;
@@ -19,7 +17,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, canR
   return (
     <div className="bg-red-950/20 border border-red-900/50 rounded-lg p-6 my-4">
       <div className="flex items-start gap-3">
-        <svg className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+        <svg className="h-6 w-6 text-red-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
         </svg>
         <div className="flex-1 space-y-3">
