@@ -260,7 +260,7 @@ const Page = () => {
 
         {/* Right side - Credits */}
         <div className="text-xs text-gray-600 dark:text-gray-600">
-          Powered by ByteTrix
+          Powered by <span className="text-red-600 dark:text-red-500 font-medium">ByteTrix</span>
         </div>
       </div>
     </div>
