@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 
+// Environment configuration
+const TEST_MODE = process.env.NEXT_PUBLIC_TEST_MODE || 'real';
+
 // Define a proper interface for geoData to avoid 'any' type and include all possible properties
 interface GeoData {
   ip?: string;
@@ -71,7 +74,9 @@ export const useNetworkInfo = (selectedServer?: string) => {
             geoData.lat = geoData.latitude || "0";
             geoData.lon = geoData.longitude || "0";
             geoData.loc = `${geoData.lat},${geoData.lon}`;
-            console.log('Location from ipapi.co:', geoData);
+            if (TEST_MODE === 'dummy') {
+              console.log('Location from ipapi.co:', geoData);
+            }
           } else {
             throw new Error('ipapi.co service failed');
           }
@@ -88,7 +93,9 @@ export const useNetworkInfo = (selectedServer?: string) => {
               geoData.regionName = geoData.region;
               geoData.lat = geoData.loc ? geoData.loc.split(',')[0] : "0";
               geoData.lon = geoData.loc ? geoData.loc.split(',')[1] : "0";
-              console.log('Location from ipinfo.io:', geoData);
+              if (TEST_MODE === 'dummy') {
+                console.log('Location from ipinfo.io:', geoData);
+              }
             } else {
               throw new Error('ipinfo.io service failed');
             }
@@ -197,7 +204,6 @@ export const useNetworkInfo = (selectedServer?: string) => {
           // Extract server hostname and try to parse location info from it
           const server = serverData.results[0];
           const serverHostname = server.machine || '';
-          console.log("Server hostname:", serverHostname);
           
           if (!serverHostname) {
             throw new Error("Invalid server hostname received");
@@ -210,7 +216,6 @@ export const useNetworkInfo = (selectedServer?: string) => {
 
           if (hostnameMatch && hostnameMatch[1]) {
             locationCode = hostnameMatch[1].substring(0, 3).toLowerCase();
-            console.log("Extracted location code from hostname:", locationCode);
           }
           
           // User coordinates
@@ -248,18 +253,11 @@ export const useNetworkInfo = (selectedServer?: string) => {
             coordinateSource = "default";
           }
           
-          console.log("User coordinates:", userLat, userLon);
-          console.log("Server coordinates:", serverLat, serverLon, `(source: ${coordinateSource})`);
-          
           let distance = simpleDistance(userLat, userLon, serverLat, serverLon);
-          console.log("Simple distance calculation:", distance, "km");
           
           if (isNaN(distance) || distance > 20000 || distance < 1) {
             distance = calculateDistance(userLat, userLon, serverLat, serverLon);
-            console.log("Fallback distance calculation:", distance, "km");
           }
-          
-          console.log("Final calculated distance:", distance, "km");
           
           const testServer = {
             name: server.machine || 'Unknown',
@@ -282,7 +280,6 @@ export const useNetworkInfo = (selectedServer?: string) => {
                 ws: `ws://${hostname}/ndt/v7/download`,
                 wsUpload: `ws://${hostname}/ndt/v7/upload` // Add upload endpoint too
               };
-              console.log("Constructed WebSocket URLs:", testServer.urls.wss, testServer.urls.wssUpload);
             } else {
               console.error("Cannot construct WebSocket URL: missing hostname");
             }
@@ -318,7 +315,6 @@ export const useNetworkInfo = (selectedServer?: string) => {
           setServerFetchAttempts(prev => prev + 1);
           
           const retryDelay = Math.pow(2, serverFetchAttempts) * 2000;
-          console.log(`Will retry fetching server info in ${retryDelay/1000} seconds...`);
           
           setTimeout(() => {
             fetchTestServerInfo(geoData);

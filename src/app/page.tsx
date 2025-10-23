@@ -48,13 +48,9 @@ const Page = () => {
     }
   }, [settings.theme]);
 
-  // Set download-only mode based on settings before each test
+  // Set download-only mode based on settings
   useEffect(() => {
-    if (settings.testMode === 'download-only') {
-      speedTest.setDownloadOnlyMode(true);
-    } else {
-      speedTest.setDownloadOnlyMode(false);
-    }
+    speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
   }, [settings.testMode, speedTest.setDownloadOnlyMode]);
 
   // Handler for Upload Test button (run only upload test)
@@ -64,12 +60,8 @@ const Page = () => {
 
   // Handler for regular start test
   const handleStartTest = () => {
-    // Apply current test mode
-    if (settings.testMode === 'download-only') {
-      speedTest.setDownloadOnlyMode(true);
-    } else {
-      speedTest.setDownloadOnlyMode(false);
-    }
+    // Apply current test mode before starting
+    speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
     speedTest.startTest();
   };
 
@@ -112,19 +104,22 @@ const Page = () => {
 
   // Auto-start test when network info is ready (controlled by environment variable)
   useEffect(() => {
-    console.log('Network info state:', {
-      hasNetworkInfo: !!networkInfo,
-      hasTestServer: !!networkInfo?.testServer,
-      serverUrls: networkInfo?.testServer?.urls,
-      isTesting: speedTest.isTesting,
-      hasResult: !!speedTest.result,
-      hasError: !!speedTest.error,
-      testStage: speedTest.testStage,
-      autoStart: AUTO_START,
-      autoStartTriggered: autoStartTriggeredRef.current,
-      testMode: TEST_MODE,
-      settingsTestMode: settings.testMode,
-    });
+    // Only log network info state in dummy mode
+    if (TEST_MODE === 'dummy') {
+      console.log('Network info state:', {
+        hasNetworkInfo: !!networkInfo,
+        hasTestServer: !!networkInfo?.testServer,
+        serverUrls: networkInfo?.testServer?.urls,
+        isTesting: speedTest.isTesting,
+        hasResult: !!speedTest.result,
+        hasError: !!speedTest.error,
+        testStage: speedTest.testStage,
+        autoStart: AUTO_START,
+        autoStartTriggered: autoStartTriggeredRef.current,
+        testMode: TEST_MODE,
+        settingsTestMode: settings.testMode,
+      });
+    }
 
     // Only auto-start once and only if there's no error
     if (AUTO_START && !autoStartTriggeredRef.current && !speedTest.isTesting && !speedTest.result && !speedTest.error) {
@@ -133,23 +128,21 @@ const Page = () => {
         console.log('Auto-starting DUMMY test...');
         autoStartTriggeredRef.current = true;
         const timer = setTimeout(() => {
-          // Apply test mode setting
-          if (settings.testMode === 'download-only') {
-            speedTest.setDownloadOnlyMode(true);
-          }
+          // Apply test mode setting BEFORE starting test
+          speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
           speedTest.startTest();
         }, 500);
         return () => clearTimeout(timer);
       }
       // For real mode, wait for network info - only mark as triggered AFTER server is available
       else if (networkInfo?.testServer) {
-        console.log('Auto-starting REAL test with server:', networkInfo.testServer);
+        if (TEST_MODE === 'dummy') {
+          console.log('Auto-starting REAL test with server:', networkInfo.testServer);
+        }
         autoStartTriggeredRef.current = true;
         const timer = setTimeout(() => {
-          // Apply test mode setting
-          if (settings.testMode === 'download-only') {
-            speedTest.setDownloadOnlyMode(true);
-          }
+          // Apply test mode setting BEFORE starting test
+          speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
           speedTest.startTest();
         }, 1000);
         return () => clearTimeout(timer);
