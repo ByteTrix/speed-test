@@ -16,6 +16,7 @@ import {
 } from 'chart.js';
 import { NetworkInfo } from '../../hooks/useNetworkInfo';
 import { NetworkInfoDisplay } from './NetworkInfoDisplay';
+import { convertSpeed } from '../Settings';
 
 ChartJS.register(
   CategoryScale,
@@ -36,7 +37,7 @@ interface ResultsDisplayProps {
   currentSpeed?: number;
   displayUnit: string;
   onRestartTest?: () => void;
-  onFullTest?: () => void; // New prop for triggering full test
+  onUploadTest?: () => void; // Prop for triggering upload test only
   networkInfo: NetworkInfo | null;
   loading: boolean;
   downloadData?: number[];
@@ -54,7 +55,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   currentSpeed = 0,
   displayUnit,
   onRestartTest,
-  onFullTest,
+  onUploadTest,
   networkInfo,
   loading,
   isTesting = false,
@@ -68,19 +69,45 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   
+  // Helper function to format speed based on unit
+  const formatCurrentSpeed = (speed: number, unit: string): string => {
+    if (unit === 'Mbps') {
+      // Mbps shows integer (no decimal)
+      return Math.round(speed).toString();
+    }
+    
+    // For other units, show dynamic decimals to ensure at least 2 significant digits are visible
+    if (speed === 0) return '0';
+    
+    // Calculate how many decimals needed to show at least 2 significant digits
+    const absSpeed = Math.abs(speed);
+    let decimals = 1; // Default for units like MBps, Kbps, Gbps
+    
+    if (absSpeed < 0.01) {
+      decimals = Math.max(2, Math.ceil(-Math.log10(absSpeed)) + 1);
+    } else if (absSpeed < 0.1) {
+      decimals = Math.max(2, 3);
+    } else if (absSpeed < 1) {
+      decimals = 2;
+    }
+    
+    return speed.toFixed(decimals);
+  };
+  
   // Use real data if available, otherwise use dummy data
   const hasRealData = downloadData.length > 0 || uploadData.length > 0;
   
   const labels = hasRealData 
     ? timeLabels.map((t, i) => i.toString())
     : Array.from({ length: 10 }, (_, i) => i.toString());
-    
+  
+  // Convert data arrays to the selected unit (data is originally in Mbps)
   const finalDownloadData = hasRealData && downloadData.length > 0
-    ? downloadData
+    ? downloadData.map(speed => convertSpeed(speed, 'Mbps', displayUnit as any))
     : [0];
     
   const finalUploadData = hasRealData && uploadData.length > 0
-    ? uploadData
+    ? uploadData.map(speed => convertSpeed(speed, 'Mbps', displayUnit as any))
     : [0];
 
   const chartData: ChartData<'line'> = {
@@ -141,8 +168,34 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         cornerRadius: 6,
         displayColors: true,
         callbacks: {
-          label: (context: TooltipItem<'line'>) => 
-            ` ${context.dataset.label}: ${(context.parsed.y || 0).toFixed(2)} ${displayUnit}`,
+          label: (context: TooltipItem<'line'>) => {
+            const value = context.parsed.y || 0;
+            let formattedValue: string;
+            
+            if (displayUnit === 'Mbps') {
+              formattedValue = Math.round(value).toString();
+            } else {
+              // Dynamic decimals to show at least 2 significant digits
+              if (value === 0) {
+                formattedValue = '0';
+              } else {
+                const absValue = Math.abs(value);
+                let decimals = 1;
+                
+                if (absValue < 0.01) {
+                  decimals = Math.max(2, Math.ceil(-Math.log10(absValue)) + 1);
+                } else if (absValue < 0.1) {
+                  decimals = Math.max(2, 3);
+                } else if (absValue < 1) {
+                  decimals = 2;
+                }
+                
+                formattedValue = value.toFixed(decimals);
+              }
+            }
+            
+            return ` ${context.dataset.label}: ${formattedValue} ${displayUnit}`;
+          },
         },
       },
     },
@@ -200,14 +253,11 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       <div className="text-center space-y-6">
         {/* Primary Download Speed */}
         <div className="space-y-2">
-          {isTesting || testStage === 'ping' ? (
+          {isTesting ? (
             <>
               <div className="text-6xl sm:text-8xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {testStage === 'ping' && (
-                  <span className="text-4xl sm:text-5xl animate-pulse">Measuring latency...</span>
-                )}
-                {testStage === 'download' && currentSpeed.toFixed(1)}
-                {testStage === 'upload' && currentSpeed.toFixed(1)}
+                {testStage === 'download' && formatCurrentSpeed(currentSpeed, displayUnit)}
+                {testStage === 'upload' && formatCurrentSpeed(currentSpeed, displayUnit)}
                 {testStage === 'idle' && (
                   <span className="text-4xl sm:text-5xl animate-pulse">Preparing...</span>
                 )}
@@ -215,7 +265,6 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               <div className="text-xl sm:text-2xl text-gray-400 font-light">
                 {testStage === 'download' && `Testing download ${displayUnit}`}
                 {testStage === 'upload' && `Testing upload ${displayUnit}`}
-                {testStage === 'ping' && 'Testing connection'}
                 {testStage === 'idle' && 'Getting ready'}
               </div>
             </>
@@ -253,11 +302,11 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           )}
         </div>
 
-        {/* Secondary Info - Upload & Ping in compact format OR Full Test button for download-only */}
+        {/* Secondary Info - Upload & Ping in compact format OR Upload Test button for download-only */}
         {!isTesting && hasRealData && (
           <>
             {isDownloadOnly ? (
-              // Download-only mode: Show latency and Full Test button
+              // Download-only mode: Show latency and Upload Test button
               <div className="flex flex-col items-center gap-4">
                 <div className="flex items-baseline gap-2 text-gray-400">
                   <span className="text-sm text-gray-500">Latency</span>
@@ -265,12 +314,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   <span className="text-sm">ms</span>
                 </div>
                 <button
-                  onClick={onFullTest}
+                  onClick={onUploadTest}
                   className="px-6 py-2 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black text-sm font-medium rounded-md
                            transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 
                            focus:ring-offset-white dark:focus:ring-offset-black"
                 >
-                  Full Test
+                  Upload Test
                 </button>
               </div>
             ) : (

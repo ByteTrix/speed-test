@@ -38,10 +38,11 @@ const Page = () => {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     } else {
-      // Manual theme selection
+      // Manual theme selection - explicitly set or remove dark class
       if (settings.theme === 'dark') {
         root.classList.add('dark');
       } else {
+        // settings.theme === 'light'
         root.classList.remove('dark');
       }
     }
@@ -56,10 +57,9 @@ const Page = () => {
     }
   }, [settings.testMode, speedTest.setDownloadOnlyMode]);
 
-  // Handler for Full Test button (temporary full test)
-  const handleFullTest = () => {
-    speedTest.setDownloadOnlyMode(false);
-    speedTest.startTest();
+  // Handler for Upload Test button (run only upload test)
+  const handleUploadTest = () => {
+    speedTest.startUploadTest();
   };
 
   // Handler for regular start test
@@ -81,6 +81,31 @@ const Page = () => {
     ? convertSpeed(speedTest.result.uploadSpeed, 'Mbps', settings.speedUnit)
     : 0;
   const currentSpeedConverted = convertSpeed(speedTest.currentSpeed, 'Mbps', settings.speedUnit);
+
+  // Helper function to format speed based on unit
+  const formatSpeed = (speed: number, unit: string): string => {
+    if (unit === 'Mbps') {
+      // Mbps shows integer (no decimal)
+      return Math.round(speed).toString();
+    }
+    
+    // For other units, show dynamic decimals to ensure at least 2 significant digits are visible
+    if (speed === 0) return '0';
+    
+    // Calculate how many decimals needed to show at least 2 significant digits
+    const absSpeed = Math.abs(speed);
+    let decimals = 1; // Default for units like MBps, Kbps, Gbps
+    
+    if (absSpeed < 0.01) {
+      decimals = Math.max(2, Math.ceil(-Math.log10(absSpeed)) + 1);
+    } else if (absSpeed < 0.1) {
+      decimals = Math.max(2, 3);
+    } else if (absSpeed < 1) {
+      decimals = 2;
+    }
+    
+    return speed.toFixed(decimals);
+  };
 
   // Track if auto-start has already been triggered to prevent infinite loops
   const autoStartTriggeredRef = useRef(false);
@@ -171,8 +196,8 @@ const Page = () => {
         {/* Results Display with Speed Graph */}
         {(!loading || networkInfo || speedTest.isTesting) ? (
           <ResultsDisplay
-            downloadSpeed={downloadSpeed.toFixed(1)}
-            uploadSpeed={uploadSpeed.toFixed(1)}
+            downloadSpeed={formatSpeed(downloadSpeed, settings.speedUnit)}
+            uploadSpeed={formatSpeed(uploadSpeed, settings.speedUnit)}
             currentSpeed={currentSpeedConverted}
             displayUnit={settings.speedUnit}
             ping={speedTest.result?.ping || 0}
@@ -184,7 +209,7 @@ const Page = () => {
             uploadData={speedTest.result?.uploadData || []}
             timeLabels={speedTest.result?.timeLabels || []}
             onRestartTest={handleStartTest}
-            onFullTest={handleFullTest}
+            onUploadTest={handleUploadTest}
             isDownloadOnly={speedTest.result?.isDownloadOnly}
             testMode={settings.testMode}
             autoStart={AUTO_START}

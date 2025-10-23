@@ -127,7 +127,17 @@ export const useNetworkInfo = (selectedServer?: string) => {
         // Reduce loading state once we have basic info
         setLoading(false);
         
-        // Now fetch the server info separately
+        // Check test mode from environment - skip M-Lab API in dummy mode
+        const testMode = process.env.NEXT_PUBLIC_TEST_MODE || 'real';
+        
+        if (testMode === 'dummy') {
+          console.log('📋 Dummy mode enabled - skipping M-Lab server discovery');
+          // In dummy mode, we don't need actual test servers
+          // The speed test will use simulated data
+          return;
+        }
+        
+        // Now fetch the server info separately (only in real mode)
         fetchTestServerInfo(geoData);
         
       } catch (err) {

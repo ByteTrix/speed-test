@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export type SpeedUnit = 'Mbps' | 'MBps' | 'Kbps' | 'Gbps';
+export type SpeedUnit = 'Mbps' | 'MBps' | 'Kbps' | 'Gbps' | 'GBps' | 'TBps' | 'ZBps';
 export type Theme = 'auto' | 'dark' | 'light';
 export type TestMode = 'download-only' | 'full';
 
@@ -26,8 +26,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
 
   useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
+    // Sync local settings whenever modal opens or settings prop changes
+    if (isOpen) {
+      setLocalSettings(settings);
+    }
+  }, [settings, isOpen]);
 
   if (!isOpen) return null;
 
@@ -72,12 +75,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Speed Unit
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(['Mbps', 'MBps', 'Kbps', 'Gbps'] as SpeedUnit[]).map((unit) => (
                 <button
                   key={unit}
                   onClick={() => setLocalSettings({ ...localSettings, speedUnit: unit })}
-                  className={`px-4 py-2.5 rounded-lg border transition-all ${
+                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                    localSettings.speedUnit === unit
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white font-medium'
+                      : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
+                  }`}
+                >
+                  {unit}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {(['GBps', 'TBps', 'ZBps'] as SpeedUnit[]).map((unit) => (
+                <button
+                  key={unit}
+                  onClick={() => setLocalSettings({ ...localSettings, speedUnit: unit })}
+                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
                     localSettings.speedUnit === unit
                       ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white font-medium'
                       : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
@@ -88,7 +106,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ))}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Choose how speed is displayed (1 MBps = 8 Mbps)
+              Conversions: 1 MBps = 8 Mbps | 1 Gbps = 1000 Mbps | 1 GBps = 8 Gbps = 8000 Mbps
             </p>
           </div>
 
@@ -133,12 +151,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
                   }`}
                 >
-                  {mode === 'download-only' ? 'Download Only' : 'Full Test'}
+                  {mode === 'download-only' ? 'Download Only' : 'Download + Upload'}
                 </button>
               ))}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Download Only tests download speed and latency only. Full Test includes upload.
+              Choose whether to test only download speed or include upload speed as well.
             </p>
           </div>
         </div>
@@ -216,6 +234,15 @@ export const convertSpeed = (speed: number, fromUnit: SpeedUnit, toUnit: SpeedUn
     case 'Gbps':
       mbps = speed * 1000;
       break;
+    case 'GBps':
+      mbps = speed * 8 * 1000; // GBps to Mbps: × 8 × 1000
+      break;
+    case 'TBps':
+      mbps = speed * 8 * 1000 * 1000; // TBps to Mbps: × 8 × 1000 × 1000
+      break;
+    case 'ZBps':
+      mbps = speed * 8 * 1000 * 1000 * 1000; // ZBps to Mbps: × 8 × 1000 × 1000 × 1000
+      break;
   }
 
   // Convert from Mbps to target unit
@@ -226,6 +253,12 @@ export const convertSpeed = (speed: number, fromUnit: SpeedUnit, toUnit: SpeedUn
       return mbps / 8;
     case 'Gbps':
       return mbps / 1000;
+    case 'GBps':
+      return mbps / 8 / 1000; // Mbps to GBps: ÷ 8 ÷ 1000
+    case 'TBps':
+      return mbps / 8 / 1000 / 1000; // Mbps to TBps: ÷ 8 ÷ 1000 ÷ 1000
+    case 'ZBps':
+      return mbps / 8 / 1000 / 1000 / 1000; // Mbps to ZBps: ÷ 8 ÷ 1000 ÷ 1000 ÷ 1000
     default:
       return mbps;
   }
