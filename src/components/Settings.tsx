@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export type SpeedUnit = 'Mbps' | 'MBps' | 'Kbps' | 'Gbps' | 'GBps' | 'TBps' | 'ZBps';
+export type SpeedUnit = 'Mbps' | 'MBps' | 'Kbps' | 'Gbps' | 'GBps' | 'TBps';
 export type Theme = 'auto' | 'dark' | 'light';
 export type TestMode = 'download-only' | 'full';
 
@@ -75,38 +75,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Speed Unit
             </label>
-            <div className="grid grid-cols-4 gap-2">
-              {(['Mbps', 'MBps', 'Kbps', 'Gbps'] as SpeedUnit[]).map((unit) => (
-                <button
-                  key={unit}
-                  onClick={() => setLocalSettings({ ...localSettings, speedUnit: unit })}
-                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
-                    localSettings.speedUnit === unit
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white font-medium'
-                      : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
-                  }`}
-                >
-                  {unit}
-                </button>
-              ))}
+            
+            {/* Bits Family */}
+            <div className="mb-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Bits per second</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(['Kbps', 'Mbps', 'Gbps'] as SpeedUnit[]).map((unit) => (
+                  <button
+                    key={unit}
+                    onClick={() => setLocalSettings({ ...localSettings, speedUnit: unit })}
+                    className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                      localSettings.speedUnit === unit
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white font-medium'
+                        : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
+                    }`}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              {(['GBps', 'TBps', 'ZBps'] as SpeedUnit[]).map((unit) => (
-                <button
-                  key={unit}
-                  onClick={() => setLocalSettings({ ...localSettings, speedUnit: unit })}
-                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
-                    localSettings.speedUnit === unit
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white font-medium'
-                      : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
-                  }`}
-                >
-                  {unit}
-                </button>
-              ))}
+
+            {/* Bytes Family */}
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Bytes per second</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(['MBps', 'GBps', 'TBps'] as SpeedUnit[]).map((unit) => (
+                  <button
+                    key={unit}
+                    onClick={() => setLocalSettings({ ...localSettings, speedUnit: unit })}
+                    className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                      localSettings.speedUnit === unit
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white font-medium'
+                        : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600'
+                    }`}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Conversions: 1 MBps = 8 Mbps | 1 Gbps = 1000 Mbps | 1 GBps = 8 Gbps = 8000 Mbps
+            
+            <p className="mt-3 text-xs text-gray-500">
+              1 MBps = 8 Mbps | 1 GBps = 1000 MBps | Most common: Mbps
             </p>
           </div>
 
@@ -240,9 +251,6 @@ export const convertSpeed = (speed: number, fromUnit: SpeedUnit, toUnit: SpeedUn
     case 'TBps':
       mbps = speed * 8 * 1000 * 1000; // TBps to Mbps: × 8 × 1000 × 1000
       break;
-    case 'ZBps':
-      mbps = speed * 8 * 1000 * 1000 * 1000; // ZBps to Mbps: × 8 × 1000 × 1000 × 1000
-      break;
   }
 
   // Convert from Mbps to target unit
@@ -257,8 +265,6 @@ export const convertSpeed = (speed: number, fromUnit: SpeedUnit, toUnit: SpeedUn
       return mbps / 8 / 1000; // Mbps to GBps: ÷ 8 ÷ 1000
     case 'TBps':
       return mbps / 8 / 1000 / 1000; // Mbps to TBps: ÷ 8 ÷ 1000 ÷ 1000
-    case 'ZBps':
-      return mbps / 8 / 1000 / 1000 / 1000; // Mbps to ZBps: ÷ 8 ÷ 1000 ÷ 1000 ÷ 1000
     default:
       return mbps;
   }

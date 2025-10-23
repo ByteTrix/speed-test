@@ -72,90 +72,68 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
   const timeLabelsRef = useRef<number[]>([]);
   const startTimeRef = useRef<number>(0);
   const pingRef = useRef<number>(0);
-  const skipUploadRef = useRef<boolean>(false); // Track if we should skip upload
+  const testModeRef = useRef<'download-only' | 'full'>('download-only');
 
-  const runDummyTest = useCallback(async () => {
-    console.log('🎭 Running DUMMY speed test');
-
-    // Reset data arrays
+  const runDummyDownloadTest = useCallback(async () => {
+    console.log('📥 Running DUMMY download test');
+    
     downloadDataRef.current = [];
-    uploadDataRef.current = [];
     timeLabelsRef.current = [];
     startTimeRef.current = Date.now();
     pingRef.current = DUMMY_PING;
 
-    const isDownloadOnly = skipUploadRef.current;
-
-    // Simulate download test (skip ping stage)
-    setState(prev => ({
-      ...prev,
-      testStage: 'download',
-      progress: 10,
-    }));
-    
-    console.log('📥 Download phase started');
-    startTimeRef.current = Date.now();
+    setState(prev => ({ ...prev, testStage: 'download', progress: 10 }));
     
     // Simulate download measurements over 8 seconds
     for (let i = 0; i < 80; i++) {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-      // Simulate varying speed (ramp up then stabilize)
       const variation = Math.sin(i / 10) * 20 + Math.random() * 10;
       const speed = Math.min(DUMMY_DOWNLOAD_SPEED, (DUMMY_DOWNLOAD_SPEED * i / 30) + variation);
       
       downloadDataRef.current.push(speed);
       timeLabelsRef.current.push(elapsedTime);
       
-      const maxProgress = isDownloadOnly ? 95 : 45;
       setState(prev => ({
         ...prev,
-        progress: Math.min(maxProgress, 10 + (i / 80) * (maxProgress - 10)),
+        progress: Math.min(95, 10 + (i / 80) * 85),
         currentSpeed: speed,
       }));
     }
 
-    // Skip upload if download-only mode
-    if (isDownloadOnly) {
-      console.log('✅ Dummy download-only test completed');
-      setState({
-        isTesting: false,
-        testStage: 'complete',
-        result: {
-          downloadSpeed: DUMMY_DOWNLOAD_SPEED,
-          uploadSpeed: 0,
-          ping: DUMMY_PING,
-          downloadData: downloadDataRef.current,
-          uploadData: [],
-          timeLabels: timeLabelsRef.current,
-          isDownloadOnly: true,
-        },
-        error: null,
-        progress: 100,
-        currentSpeed: 0,
-      });
-      skipUploadRef.current = false; // Reset flag
-      return;
-    }
+    console.log('✅ Dummy download test completed');
+    setState({
+      isTesting: false,
+      testStage: 'complete',
+      result: {
+        downloadSpeed: DUMMY_DOWNLOAD_SPEED,
+        uploadSpeed: 0,
+        ping: DUMMY_PING,
+        downloadData: downloadDataRef.current,
+        uploadData: [],
+        timeLabels: timeLabelsRef.current,
+        isDownloadOnly: true,
+      },
+      error: null,
+      progress: 100,
+      currentSpeed: 0,
+    });
+  }, []);
 
-    // Simulate upload test
-    setState(prev => ({
-      ...prev,
-      testStage: 'upload',
-      progress: 50,
-    }));
+  const runDummyUploadTest = useCallback(async () => {
+    console.log('📤 Running DUMMY upload test');
     
-    console.log('📤 Upload phase started');
-    startTimeRef.current = Date.now();
     uploadDataRef.current = [];
+    startTimeRef.current = Date.now();
+
+    setState(prev => ({ ...prev, testStage: 'upload', progress: 50 }));
     
     // Simulate upload measurements over 8 seconds
     for (let i = 0; i < 80; i++) {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-      // Simulate varying speed
       const variation = Math.sin(i / 8) * 15 + Math.random() * 8;
       const speed = Math.min(DUMMY_UPLOAD_SPEED, (DUMMY_UPLOAD_SPEED * i / 30) + variation);
       
@@ -168,7 +146,62 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
       }));
     }
 
-    // Complete the test
+    console.log('✅ Dummy upload test completed');
+  }, []);
+
+  const runDummyFullTest = useCallback(async () => {
+    console.log('🎭 Running DUMMY full test (download + upload)');
+
+    downloadDataRef.current = [];
+    uploadDataRef.current = [];
+    timeLabelsRef.current = [];
+    startTimeRef.current = Date.now();
+    pingRef.current = DUMMY_PING;
+
+    // Download phase
+    setState(prev => ({ ...prev, testStage: 'download', progress: 10 }));
+    console.log('📥 Download phase started');
+    startTimeRef.current = Date.now();
+    
+    for (let i = 0; i < 80; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+      const variation = Math.sin(i / 10) * 20 + Math.random() * 10;
+      const speed = Math.min(DUMMY_DOWNLOAD_SPEED, (DUMMY_DOWNLOAD_SPEED * i / 30) + variation);
+      
+      downloadDataRef.current.push(speed);
+      timeLabelsRef.current.push(elapsedTime);
+      
+      setState(prev => ({
+        ...prev,
+        progress: Math.min(45, 10 + (i / 80) * 35),
+        currentSpeed: speed,
+      }));
+    }
+
+    // Upload phase
+    setState(prev => ({ ...prev, testStage: 'upload', progress: 50 }));
+    console.log('📤 Upload phase started');
+    startTimeRef.current = Date.now();
+    uploadDataRef.current = [];
+    
+    for (let i = 0; i < 80; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+      const variation = Math.sin(i / 8) * 15 + Math.random() * 8;
+      const speed = Math.min(DUMMY_UPLOAD_SPEED, (DUMMY_UPLOAD_SPEED * i / 30) + variation);
+      
+      uploadDataRef.current.push(speed);
+      
+      setState(prev => ({
+        ...prev,
+        progress: Math.min(95, 50 + (i / 80) * 45),
+        currentSpeed: speed,
+      }));
+    }
+
     console.log('✅ Dummy full test completed');
     setState({
       isTesting: false,
@@ -186,11 +219,11 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
       progress: 100,
       currentSpeed: 0,
     });
-    skipUploadRef.current = false; // Reset flag
   }, []);
 
-  const startTest = useCallback(async () => {
-    // Start UI test - go straight to download
+  const startTest = useCallback(async (testMode: 'download-only' | 'full' = 'download-only') => {
+    testModeRef.current = testMode;
+    
     setState({
       isTesting: true,
       testStage: 'download',
@@ -201,15 +234,19 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
     });
 
     try {
-      // Check test mode
+      // DUMMY MODE
       if (TEST_MODE === 'dummy') {
-        console.log('📋 Test Mode: DUMMY (simulated data)');
-        await runDummyTest();
+        console.log(`📋 Test Mode: DUMMY (${testMode})`);
+        
+        if (testMode === 'download-only') {
+          await runDummyDownloadTest();
+        } else {
+          await runDummyFullTest();
+        }
         return;
       }
 
-      // Real test mode - minimal logging
-      // Reset data arrays
+      // REAL MODE
       downloadDataRef.current = [];
       uploadDataRef.current = [];
       timeLabelsRef.current = [];
@@ -220,40 +257,32 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
         throw new Error('NDT7 library not available');
       }
 
-      // Configure the ndt7 test
       const config: any = {
         userAcceptedDataPolicy: true,
         metadata: {
-          client_name: 'speed-test-app',
+          client_name: 'kvn-speed-test',
         },
       };
-
-      // Let NDT7 library handle server discovery automatically via locate API
-      // It will get the proper access tokens and WebSocket URLs
 
       let maxDownloadSpeed = 0;
       let maxUploadSpeed = 0;
 
-      // Run the NDT7 test
-      await ndt7.test(
-        config,
-        {
+      // DOWNLOAD-ONLY MODE: Use ndt7.downloadTest()
+      if (testMode === 'download-only') {
+        console.log('🚀 Running download-only test');
+
+        const urlPromise = ndt7.discoverServerURLs(config, {
           serverChosen: (server: any) => {
-            // Only log in dummy mode or if there's an issue
-            if (TEST_MODE === 'dummy') {
-              console.log('Server chosen:', server);
-            }
-            // Validate that server has proper URLs
-            if (!server.urls || (!server.urls.wss && !server.urls['wss:///ndt/v7/download'])) {
-              console.warn('⚠️ Server missing WebSocket URLs, this may cause connection issues');
-            }
+            console.log('Server chosen for download test');
           },
+          error: (err: Error) => {
+            console.error('Server discovery error:', err);
+          },
+        });
+
+        await ndt7.downloadTest(config, {
           downloadStart: () => {
-            setState(prev => ({
-              ...prev,
-              testStage: 'download',
-              progress: 10,
-            }));
+            setState(prev => ({ ...prev, testStage: 'download', progress: 10 }));
             startTimeRef.current = Date.now();
             downloadDataRef.current = [];
             timeLabelsRef.current = [];
@@ -261,154 +290,130 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
           downloadMeasurement: (data: MLabMeasurement) => {
             if (data.Source === 'client' && data.Data.MeanClientMbps) {
               const speed = data.Data.MeanClientMbps;
-              // Track max speed for visual feedback during test
-              const displaySpeed = Math.max(maxDownloadSpeed, speed);
-              
               const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
               downloadDataRef.current.push(speed);
               timeLabelsRef.current.push(elapsedTime);
               
               setState(prev => ({
                 ...prev,
-                progress: Math.min(45, 10 + (elapsedTime / 10) * 35),
-                currentSpeed: speed, // Show current instantaneous speed
+                progress: Math.min(95, 10 + (elapsedTime / 10) * 85),
+                currentSpeed: speed,
               }));
             }
             
-            // Capture ping from server measurements
-            if (data.Source === 'server' && data.Data.TCPInfo) {
-              const minRTT = data.Data.TCPInfo.MinRTT;
-              if (minRTT && minRTT > 0) {
-                pingRef.current = Math.round(minRTT / 1000); // Convert microseconds to milliseconds
-              }
+            if (data.Source === 'server' && data.Data.TCPInfo?.MinRTT) {
+              pingRef.current = Math.round(data.Data.TCPInfo.MinRTT / 1000);
             }
           },
           downloadComplete: (data: MLabComplete) => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Download test complete:', data);
-            }
-            
-            // Use the LastClientMeasurement for the final speed (this is the accurate average)
             const finalSpeed = data.LastClientMeasurement?.MeanClientMbps || maxDownloadSpeed;
-            maxDownloadSpeed = finalSpeed; // Use the final measured speed, not max
+            maxDownloadSpeed = finalSpeed;
             
-            // Extract ping from server measurement if available (MinRTT is in microseconds)
             if (data.LastServerMeasurement?.TCPInfo?.MinRTT) {
               pingRef.current = Math.round(data.LastServerMeasurement.TCPInfo.MinRTT / 1000);
-              if (TEST_MODE === 'dummy') {
-                console.log('Latency from TCPInfo.MinRTT:', pingRef.current, 'ms');
-              }
-            }
-
-            // If download-only mode, complete the test here
-            if (skipUploadRef.current) {
-              if (TEST_MODE === 'dummy') {
-                console.log('✅ Download-only test completed');
-              }
-              
-              setState({
-                isTesting: false,
-                testStage: 'complete',
-                result: {
-                  downloadSpeed: Math.round(maxDownloadSpeed * 10) / 10,
-                  uploadSpeed: 0,
-                  ping: pingRef.current,
-                  downloadData: downloadDataRef.current,
-                  uploadData: [],
-                  timeLabels: timeLabelsRef.current,
-                  isDownloadOnly: true,
-                },
-                error: null,
-                progress: 100,
-                currentSpeed: 0,
-              });
-              skipUploadRef.current = false; // Reset flag
-              
-              // Throw error to exit the test early (NDT7 will catch it)
-              throw new Error('DOWNLOAD_ONLY_COMPLETE');
-            }
-
-            setState(prev => ({
-              ...prev,
-              testStage: 'upload',
-              progress: 50,
-            }));
-          },
-          uploadStart: () => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Upload test started');
-            }
-            startTimeRef.current = Date.now();
-            uploadDataRef.current = [];
-          },
-          uploadMeasurement: (data: MLabMeasurement) => {
-            if (data.Source === 'client' && data.Data.MeanClientMbps) {
-              const speed = data.Data.MeanClientMbps;
-              // Track max speed for visual feedback during test
-              const displaySpeed = Math.max(maxUploadSpeed, speed);
-              
-              const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-              uploadDataRef.current.push(speed);
-              
-              setState(prev => ({
-                ...prev,
-                progress: Math.min(95, 50 + (elapsedTime / 10) * 45),
-                currentSpeed: speed, // Show current instantaneous speed
-              }));
-            }
-            
-            // Capture ping from server measurements if not already set
-            if (data.Source === 'server' && data.Data.TCPInfo) {
-              const minRTT = data.Data.TCPInfo.MinRTT;
-              if (minRTT && minRTT > 0 && !pingRef.current) {
-                pingRef.current = Math.round(minRTT / 1000); // Convert microseconds to milliseconds
-              }
-            }
-          },
-          uploadComplete: (data: MLabComplete) => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Upload test complete:', data);
-            }
-            
-            // Use the LastClientMeasurement for the final speed (this is the accurate average)
-            const finalSpeed = data.LastClientMeasurement?.MeanClientMbps || maxUploadSpeed;
-            maxUploadSpeed = finalSpeed; // Use the final measured speed, not max
-            
-            // Extract latency from server measurement if not already set (RTT is in microseconds)
-            if (!pingRef.current && data.LastServerMeasurement?.TCPInfo?.RTT) {
-              pingRef.current = Math.round(data.LastServerMeasurement.TCPInfo.RTT / 1000);
-              if (TEST_MODE === 'dummy') {
-                console.log('Latency from TCPInfo.RTT:', pingRef.current, 'ms');
-              }
-            }
-            
-            if (TEST_MODE === 'dummy') {
-              console.log('Final speeds - Download:', maxDownloadSpeed, 'Mbps, Upload:', maxUploadSpeed, 'Mbps');
             }
           },
           error: (err: Error) => {
-            console.error('NDT7 test error:', err);
-            console.error('Error details:', {
-              message: err.message,
-              name: err.name,
-              stack: err.stack
-            });
-            // Don't throw immediately, let the test try to complete
-            // Only throw if we get no data at all
+            console.error('Download test error:', err);
           },
-        }
-      );
+        }, urlPromise);
 
-      // Test completed successfully - only log in dummy mode
-      if (TEST_MODE === 'dummy') {
-        console.log('✅ NDT7 test completed successfully');
+        setState({
+          isTesting: false,
+          testStage: 'complete',
+          result: {
+            downloadSpeed: Math.round(maxDownloadSpeed * 10) / 10,
+            uploadSpeed: 0,
+            ping: pingRef.current,
+            downloadData: downloadDataRef.current,
+            uploadData: [],
+            timeLabels: timeLabelsRef.current,
+            isDownloadOnly: true,
+          },
+          error: null,
+          progress: 100,
+          currentSpeed: 0,
+        });
+
+        console.log('✅ Download-only test completed');
+        return;
       }
-      
-      // Check if we actually got any data
-      if (maxDownloadSpeed === 0 && maxUploadSpeed === 0 && downloadDataRef.current.length === 0) {
-        throw new Error('WebSocket connection failed. No data received from test servers. This may be due to firewall, antivirus, or network restrictions blocking WebSocket connections.');
-      }
-      
+
+      // FULL MODE: Use ndt7.test()
+      console.log('🚀 Running full test (download + upload)');
+
+      await ndt7.test(config, {
+        serverChosen: (server: any) => {
+          console.log('Server chosen for full test');
+        },
+        downloadStart: () => {
+          setState(prev => ({ ...prev, testStage: 'download', progress: 10 }));
+          startTimeRef.current = Date.now();
+          downloadDataRef.current = [];
+          timeLabelsRef.current = [];
+        },
+        downloadMeasurement: (data: MLabMeasurement) => {
+          if (data.Source === 'client' && data.Data.MeanClientMbps) {
+            const speed = data.Data.MeanClientMbps;
+            const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+            downloadDataRef.current.push(speed);
+            timeLabelsRef.current.push(elapsedTime);
+            
+            setState(prev => ({
+              ...prev,
+              progress: Math.min(45, 10 + (elapsedTime / 10) * 35),
+              currentSpeed: speed,
+            }));
+          }
+          
+          if (data.Source === 'server' && data.Data.TCPInfo?.MinRTT && !pingRef.current) {
+            pingRef.current = Math.round(data.Data.TCPInfo.MinRTT / 1000);
+          }
+        },
+        downloadComplete: (data: MLabComplete) => {
+          const finalSpeed = data.LastClientMeasurement?.MeanClientMbps || maxDownloadSpeed;
+          maxDownloadSpeed = finalSpeed;
+          
+          if (data.LastServerMeasurement?.TCPInfo?.MinRTT) {
+            pingRef.current = Math.round(data.LastServerMeasurement.TCPInfo.MinRTT / 1000);
+          }
+
+          setState(prev => ({ ...prev, testStage: 'upload', progress: 50 }));
+        },
+        uploadStart: () => {
+          startTimeRef.current = Date.now();
+          uploadDataRef.current = [];
+        },
+        uploadMeasurement: (data: MLabMeasurement) => {
+          if (data.Source === 'client' && data.Data.MeanClientMbps) {
+            const speed = data.Data.MeanClientMbps;
+            const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+            uploadDataRef.current.push(speed);
+            
+            setState(prev => ({
+              ...prev,
+              progress: Math.min(95, 50 + (elapsedTime / 10) * 45),
+              currentSpeed: speed,
+            }));
+          }
+          
+          if (data.Source === 'server' && data.Data.TCPInfo?.MinRTT && !pingRef.current) {
+            pingRef.current = Math.round(data.Data.TCPInfo.MinRTT / 1000);
+          }
+        },
+        uploadComplete: (data: MLabComplete) => {
+          const finalSpeed = data.LastClientMeasurement?.MeanClientMbps || maxUploadSpeed;
+          maxUploadSpeed = finalSpeed;
+          
+          if (!pingRef.current && data.LastServerMeasurement?.TCPInfo?.RTT) {
+            pingRef.current = Math.round(data.LastServerMeasurement.TCPInfo.RTT / 1000);
+          }
+        },
+        error: (err: Error) => {
+          console.error('Test error:', err);
+        },
+      });
+
       setState({
         isTesting: false,
         testStage: 'complete',
@@ -425,18 +430,12 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
         progress: 100,
         currentSpeed: 0,
       });
+
+      console.log('✅ Full test completed');
+
     } catch (error) {
-      // Ignore the DOWNLOAD_ONLY_COMPLETE error - it's intentional
-      if (error instanceof Error && error.message === 'DOWNLOAD_ONLY_COMPLETE') {
-        if (TEST_MODE === 'dummy') {
-          console.log('Download-only test exited successfully');
-        }
-        return; // Exit cleanly
-      }
-      
       console.error('❌ Speed test failed:', error);
 
-      // Provide more helpful error message
       let errorMessage = 'Test failed';
       if (error instanceof Error) {
         if (error.message.includes('WebSocket') || error.message.includes('connection')) {
@@ -448,7 +447,6 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
         }
       }
 
-      // Set error state
       setState({
         isTesting: false,
         testStage: 'idle',
@@ -458,7 +456,7 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
         currentSpeed: 0,
       });
     }
-  }, [networkInfo, runDummyTest]);
+  }, [runDummyDownloadTest, runDummyFullTest]);
 
   const cancelTest = useCallback(() => {
     setState({
@@ -469,12 +467,6 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
       progress: 0,
       currentSpeed: 0,
     });
-    skipUploadRef.current = false; // Reset flag on cancel
-  }, []);
-
-  // Method to set download-only mode for next test
-  const setDownloadOnlyMode = useCallback((downloadOnly: boolean) => {
-    skipUploadRef.current = downloadOnly;
   }, []);
 
   // Method to run ONLY upload test (after download is already complete)
@@ -484,11 +476,8 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
       return;
     }
 
-    if (TEST_MODE === 'dummy') {
-      console.log('🚀 Starting upload-only test (DUMMY mode)');
-    }
+    console.log('🚀 Starting upload-only test');
 
-    // Set testing state for upload
     setState(prev => ({
       ...prev,
       isTesting: true,
@@ -498,28 +487,10 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
     }));
 
     try {
+      // DUMMY MODE
       if (TEST_MODE === 'dummy') {
-        // Simulate upload test for dummy mode
-        startTimeRef.current = Date.now();
-        uploadDataRef.current = [];
+        await runDummyUploadTest();
         
-        for (let i = 0; i < 80; i++) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-          const variation = Math.sin(i / 8) * 15 + Math.random() * 8;
-          const speed = Math.min(DUMMY_UPLOAD_SPEED, (DUMMY_UPLOAD_SPEED * i / 30) + variation);
-          
-          uploadDataRef.current.push(speed);
-          
-          setState(prev => ({
-            ...prev,
-            progress: Math.min(95, 50 + (i / 80) * 45),
-            currentSpeed: speed,
-          }));
-        }
-
-        // Complete with upload data added
         setState({
           isTesting: false,
           testStage: 'complete',
@@ -533,98 +504,90 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
           progress: 100,
           currentSpeed: 0,
         });
-      } else {
-        // Real upload test with NDT7
-        if (!ndt7) {
-          throw new Error('NDT7 library not available');
-        }
-
-        const config: any = {
-          userAcceptedDataPolicy: true,
-          metadata: {
-            client_name: 'speed-test-app',
-          },
-        };
-
-        uploadDataRef.current = [];
-        let maxUploadSpeed = 0;
-
-        await ndt7.test(config, {
-          serverChosen: () => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Server already chosen, starting upload test');
-            }
-          },
-          downloadStart: () => {
-            // Skip download, we already have it
-          },
-          downloadMeasurement: () => {
-            // Skip download measurements
-          },
-          downloadComplete: () => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Skipping download phase');
-            }
-          },
-          uploadStart: () => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Upload test started');
-            }
-            startTimeRef.current = Date.now();
-            uploadDataRef.current = [];
-          },
-          uploadMeasurement: (data: MLabMeasurement) => {
-            if (data.Source === 'client' && data.Data.MeanClientMbps) {
-              const speed = data.Data.MeanClientMbps;
-              maxUploadSpeed = Math.max(maxUploadSpeed, speed);
-              
-              const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-              uploadDataRef.current.push(speed);
-              
-              setState(prev => ({
-                ...prev,
-                progress: Math.min(95, 50 + (elapsedTime / 10) * 45),
-                currentSpeed: speed,
-              }));
-            }
-          },
-          uploadComplete: (data: MLabComplete) => {
-            if (TEST_MODE === 'dummy') {
-              console.log('Upload test complete:', data);
-            }
-            
-            const finalSpeed = data.LastClientMeasurement?.MeanClientMbps || maxUploadSpeed;
-            maxUploadSpeed = finalSpeed;
-            
-            if (TEST_MODE === 'dummy') {
-              console.log('Final upload speed:', maxUploadSpeed, 'Mbps');
-            }
-          },
-          error: (err: Error) => {
-            console.error('Upload test error:', err);
-            throw err;
-          },
-        });
-
-        // Update result with upload data
-        setState({
-          isTesting: false,
-          testStage: 'complete',
-          result: {
-            ...state.result,
-            uploadSpeed: Math.round(maxUploadSpeed * 10) / 10,
-            uploadData: uploadDataRef.current,
-            isDownloadOnly: false,
-          },
-          error: null,
-          progress: 100,
-          currentSpeed: 0,
-        });
+        
+        console.log('✅ Dummy upload test completed');
+        return;
       }
 
-      if (TEST_MODE === 'dummy') {
-        console.log('✅ Upload test completed');
+      // REAL MODE - Use ndt7.uploadTest()
+      if (!ndt7) {
+        throw new Error('NDT7 library not available');
       }
+
+      const config: any = {
+        userAcceptedDataPolicy: true,
+        metadata: {
+          client_name: 'kvn-speed-test',
+        },
+      };
+
+      uploadDataRef.current = [];
+      let maxUploadSpeed = 0;
+
+      const urlPromise = ndt7.discoverServerURLs(config, {
+        serverChosen: (server: any) => {
+          console.log('Server selected for upload test');
+        },
+        error: (err: Error) => {
+          console.error('Server discovery error:', err);
+        },
+      });
+
+      await ndt7.uploadTest(config, {
+        uploadStart: () => {
+          console.log('Upload test started');
+          startTimeRef.current = Date.now();
+          uploadDataRef.current = [];
+        },
+        uploadMeasurement: (data: MLabMeasurement) => {
+          if (data.Source === 'client' && data.Data.MeanClientMbps) {
+            const speed = data.Data.MeanClientMbps;
+            maxUploadSpeed = Math.max(maxUploadSpeed, speed);
+            
+            const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+            uploadDataRef.current.push(speed);
+            
+            setState(prev => ({
+              ...prev,
+              progress: Math.min(95, 50 + (elapsedTime / 10) * 45),
+              currentSpeed: speed,
+            }));
+          }
+          
+          if (data.Source === 'server' && data.Data.TCPInfo?.MinRTT && !pingRef.current) {
+            pingRef.current = Math.round(data.Data.TCPInfo.MinRTT / 1000);
+          }
+        },
+        uploadComplete: (data: MLabComplete) => {
+          const finalSpeed = data.LastClientMeasurement?.MeanClientMbps || maxUploadSpeed;
+          maxUploadSpeed = finalSpeed;
+          
+          if (!pingRef.current && data.LastServerMeasurement?.TCPInfo?.RTT) {
+            pingRef.current = Math.round(data.LastServerMeasurement.TCPInfo.RTT / 1000);
+          }
+          
+          console.log('Upload test complete - Final speed:', maxUploadSpeed, 'Mbps');
+        },
+        error: (err: Error) => {
+          console.error('Upload test error:', err);
+        },
+      }, urlPromise);
+
+      setState({
+        isTesting: false,
+        testStage: 'complete',
+        result: {
+          ...state.result,
+          uploadSpeed: Math.round(maxUploadSpeed * 10) / 10,
+          uploadData: uploadDataRef.current,
+          isDownloadOnly: false,
+        },
+        error: null,
+        progress: 100,
+        currentSpeed: 0,
+      });
+
+      console.log('✅ Upload-only test completed');
     } catch (error) {
       console.error('❌ Upload test failed:', error);
       
@@ -636,13 +599,12 @@ export const useSpeedTest = (networkInfo: NetworkInfo | null) => {
         currentSpeed: 0,
       }));
     }
-  }, [state.result]);
+  }, [state.result, runDummyUploadTest]);
 
   return {
     ...state,
     startTest,
     cancelTest,
-    setDownloadOnlyMode,
     startUploadTest,
   };
 };

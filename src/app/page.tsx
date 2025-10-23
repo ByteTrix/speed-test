@@ -48,11 +48,6 @@ const Page = () => {
     }
   }, [settings.theme]);
 
-  // Set download-only mode based on settings
-  useEffect(() => {
-    speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
-  }, [settings.testMode, speedTest.setDownloadOnlyMode]);
-
   // Handler for Upload Test button (run only upload test)
   const handleUploadTest = () => {
     speedTest.startUploadTest();
@@ -60,9 +55,7 @@ const Page = () => {
 
   // Handler for regular start test
   const handleStartTest = () => {
-    // Apply current test mode before starting
-    speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
-    speedTest.startTest();
+    speedTest.startTest(settings.testMode);
   };
 
   // Convert speeds based on selected unit
@@ -72,6 +65,9 @@ const Page = () => {
   const uploadSpeed = speedTest.result?.uploadSpeed 
     ? convertSpeed(speedTest.result.uploadSpeed, 'Mbps', settings.speedUnit)
     : 0;
+  // Keep currentSpeed in Mbps for dynamic unit calculation during real-time testing
+  const currentSpeedInMbps = speedTest.currentSpeed;
+  // Also provide converted speed for non-dynamic display (if needed)
   const currentSpeedConverted = convertSpeed(speedTest.currentSpeed, 'Mbps', settings.speedUnit);
 
   // Helper function to format speed based on unit
@@ -128,9 +124,7 @@ const Page = () => {
         console.log('Auto-starting DUMMY test...');
         autoStartTriggeredRef.current = true;
         const timer = setTimeout(() => {
-          // Apply test mode setting BEFORE starting test
-          speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
-          speedTest.startTest();
+          speedTest.startTest(settings.testMode);
         }, 500);
         return () => clearTimeout(timer);
       }
@@ -141,9 +135,7 @@ const Page = () => {
         }
         autoStartTriggeredRef.current = true;
         const timer = setTimeout(() => {
-          // Apply test mode setting BEFORE starting test
-          speedTest.setDownloadOnlyMode(settings.testMode === 'download-only');
-          speedTest.startTest();
+          speedTest.startTest(settings.testMode);
         }, 1000);
         return () => clearTimeout(timer);
       }
@@ -191,7 +183,7 @@ const Page = () => {
           <ResultsDisplay
             downloadSpeed={formatSpeed(downloadSpeed, settings.speedUnit)}
             uploadSpeed={formatSpeed(uploadSpeed, settings.speedUnit)}
-            currentSpeed={currentSpeedConverted}
+            currentSpeed={currentSpeedInMbps}
             displayUnit={settings.speedUnit}
             ping={speedTest.result?.ping || 0}
             networkInfo={networkInfo}

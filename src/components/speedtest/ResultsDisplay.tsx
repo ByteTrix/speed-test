@@ -34,7 +34,7 @@ interface ResultsDisplayProps {
   ping?: number;
   downloadSpeed: string;
   uploadSpeed: string;
-  currentSpeed?: number;
+  currentSpeed?: number; // Current speed in Mbps (raw) for dynamic unit calculation
   displayUnit: string;
   onRestartTest?: () => void;
   onUploadTest?: () => void; // Prop for triggering upload test only
@@ -47,6 +47,79 @@ interface ResultsDisplayProps {
   testMode?: 'download-only' | 'full'; // Current test mode setting
   autoStart?: boolean; // New prop to indicate if auto-start is enabled
 }
+
+// Helper function to dynamically determine the best unit for real-time display (like fast.com)
+// Based on user's preferred unit setting - stays in the same family (bits vs bytes)
+const getDynamicUnit = (speedInMbps: number, preferredUnit: string): { value: number; unit: string } => {
+  // Determine if user prefers bits or bytes
+  const isBytesFamily = preferredUnit.includes('Bps') || preferredUnit.includes('BPS');
+  const isGigaScale = preferredUnit.startsWith('G');
+  const isTeraScale = preferredUnit.startsWith('T');
+  const isKiloScale = preferredUnit.startsWith('K');
+  
+  if (isBytesFamily) {
+    // Bytes family (MBps, GBps, etc.)
+    const speedInMBps = speedInMbps / 8; // Convert Mbps to MBps
+    
+    if (isTeraScale) {
+      // TBps scale
+      if (speedInMBps < 1000) {
+        return { value: speedInMBps, unit: 'MBps' };
+      } else if (speedInMBps < 1000000) {
+        return { value: speedInMBps / 1000, unit: 'GBps' };
+      } else {
+        return { value: speedInMBps / 1000000, unit: 'TBps' };
+      }
+    } else if (isGigaScale) {
+      // GBps scale
+      if (speedInMBps < 1) {
+        return { value: speedInMBps * 1000, unit: 'KBps' };
+      } else if (speedInMBps < 1000) {
+        return { value: speedInMBps, unit: 'MBps' };
+      } else {
+        return { value: speedInMBps / 1000, unit: 'GBps' };
+      }
+    } else {
+      // MBps scale (default for bytes)
+      if (speedInMBps < 1) {
+        return { value: speedInMBps * 1000, unit: 'KBps' };
+      } else {
+        return { value: speedInMBps, unit: 'MBps' };
+      }
+    }
+  } else {
+    // Bits family (Mbps, Gbps, Kbps, etc.)
+    if (isTeraScale) {
+      // Tbps scale
+      if (speedInMbps < 1000) {
+        return { value: speedInMbps, unit: 'Mbps' };
+      } else if (speedInMbps < 1000000) {
+        return { value: speedInMbps / 1000, unit: 'Gbps' };
+      } else {
+        return { value: speedInMbps / 1000000, unit: 'Tbps' };
+      }
+    } else if (isGigaScale) {
+      // Gbps scale
+      if (speedInMbps < 1) {
+        return { value: speedInMbps * 1000, unit: 'Kbps' };
+      } else if (speedInMbps < 1000) {
+        return { value: speedInMbps, unit: 'Mbps' };
+      } else {
+        return { value: speedInMbps / 1000, unit: 'Gbps' };
+      }
+    } else if (isKiloScale) {
+      // Kbps scale
+      return { value: speedInMbps * 1000, unit: 'Kbps' };
+    } else {
+      // Mbps scale (default for bits)
+      if (speedInMbps < 1) {
+        return { value: speedInMbps * 1000, unit: 'Kbps' };
+      } else {
+        return { value: speedInMbps, unit: 'Mbps' };
+      }
+    }
+  }
+};
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   ping = 0,
@@ -69,25 +142,34 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   
-  // Helper function to format speed based on unit
-  const formatCurrentSpeed = (speed: number, unit: string): string => {
+  // Helper function to format speed with dynamic precision for real-time display
+  const formatDynamicSpeed = (speed: number, unit: string): string => {
+    if (speed === 0) return '0';
+    
+    const absSpeed = Math.abs(speed);
+    
+    // For Mbps, show integer (no decimal) - matches old logic
     if (unit === 'Mbps') {
-      // Mbps shows integer (no decimal)
       return Math.round(speed).toString();
     }
     
     // For other units, show dynamic decimals to ensure at least 2 significant digits are visible
-    if (speed === 0) return '0';
-    
-    // Calculate how many decimals needed to show at least 2 significant digits
-    const absSpeed = Math.abs(speed);
-    let decimals = 1; // Default for units like MBps, Kbps, Gbps
+    let decimals = 1; // Default for units like Kbps, Gbps, Tbps
     
     if (absSpeed < 0.01) {
       decimals = Math.max(2, Math.ceil(-Math.log10(absSpeed)) + 1);
     } else if (absSpeed < 0.1) {
       decimals = Math.max(2, 3);
     } else if (absSpeed < 1) {
+      decimals = 2;
+    } else if (absSpeed >= 100) {
+      // Integer for speeds >= 100
+      return Math.round(speed).toString();
+    } else if (absSpeed >= 10) {
+      // 1 decimal for speeds 10-100
+      decimals = 1;
+    } else {
+      // 2 decimals for speeds < 10
       decimals = 2;
     }
     
@@ -255,26 +337,45 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <div className="space-y-2">
           {isTesting ? (
             <>
-              <div className="text-6xl sm:text-8xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {testStage === 'download' && formatCurrentSpeed(currentSpeed, displayUnit)}
-                {testStage === 'upload' && formatCurrentSpeed(currentSpeed, displayUnit)}
-                {testStage === 'idle' && (
-                  <span className="text-4xl sm:text-5xl animate-pulse">Preparing...</span>
-                )}
-              </div>
-              <div className="text-xl sm:text-2xl text-gray-400 font-light">
-                {testStage === 'download' && `Testing download ${displayUnit}`}
-                {testStage === 'upload' && `Testing upload ${displayUnit}`}
-                {testStage === 'idle' && 'Getting ready'}
-              </div>
+              {testStage === 'idle' ? (
+                <div className="text-4xl sm:text-5xl animate-pulse text-gray-600 tracking-tight">
+                  Preparing...
+                </div>
+              ) : (
+                <>
+                  {/* Real-time speed - number perfectly centered on screen */}
+                  <div className="relative flex justify-center items-center">
+                    <span className="text-8xl sm:text-9xl font-bold text-gray-900 dark:text-white tracking-tight tabular-nums">
+                      {(() => {
+                        const dynamic = getDynamicUnit(currentSpeed || 0, displayUnit);
+                        return formatDynamicSpeed(dynamic.value, dynamic.unit);
+                      })()}
+                    </span>
+                    <span className="text-2xl sm:text-3xl font-medium text-gray-500 ml-2 self-center">
+                      {(() => {
+                        const dynamic = getDynamicUnit(currentSpeed || 0, displayUnit);
+                        return dynamic.unit;
+                      })()}
+                    </span>
+                  </div>
+                  {/* Clean label below - only "Download" or "Upload" */}
+                  <div className="text-xl sm:text-2xl text-gray-400 font-light mt-4">
+                    {testStage === 'download' && 'Download'}
+                    {testStage === 'upload' && 'Upload'}
+                  </div>
+                </>
+              )}
             </>
           ) : hasRealData ? (
             <>
-              <div className="text-8xl sm:text-9xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {downloadSpeed}
-              </div>
-              <div className="text-2xl sm:text-3xl text-gray-500 font-light">
-                {displayUnit}
+              {/* Final results - number perfectly centered on screen */}
+              <div className="relative flex justify-center items-center">
+                <span className="text-8xl sm:text-9xl font-bold text-gray-900 dark:text-white tracking-tight tabular-nums">
+                  {downloadSpeed}
+                </span>
+                <span className="text-2xl sm:text-3xl font-medium text-gray-500 ml-2 self-center">
+                  {displayUnit}
+                </span>
               </div>
             </>
           ) : !autoStart ? (
@@ -313,14 +414,14 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   <span className="text-xl font-semibold text-gray-900 dark:text-white">{ping}</span>
                   <span className="text-sm">ms</span>
                 </div>
-                <button
-                  onClick={onUploadTest}
-                  className="px-6 py-2 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black text-sm font-medium rounded-md
-                           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 
-                           focus:ring-offset-white dark:focus:ring-offset-black"
-                >
+                  <button
+                    onClick={onUploadTest}
+                    className="px-6 py-2 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black text-sm font-medium rounded-md
+                             transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 
+                             focus:ring-offset-white dark:focus:ring-offset-black"
+                  >
                   Upload Test
-                </button>
+                  </button>
               </div>
             ) : (
               // Full test mode: Show upload and latency
